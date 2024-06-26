@@ -252,10 +252,13 @@ impl Grid {
             return Ok(());
         }
 
-        for _ in 0..2{
+        for _ in 0..4{
             for i in 0..self.fields.len() {
                 let _ = recursive_merge(&Option::from(i), direction, &mut self.fields, score);
             }
+        }
+        for field in self.fields.iter_mut() {
+            field.as_mut().unwrap().reset_blocker();
         }
         Ok(())
     }
@@ -305,27 +308,36 @@ impl Grid {
 #[derive(Debug, Default, Clone)]
 struct Field {
     val: u64,
-    neighbours: Vec<Option<usize>> // top right bottom left
+    neighbours: Vec<Option<usize>>, // top right bottom left
+    has_merged: bool
 }
 
 impl Field {
     fn new() -> Self {
         Field {
             val: 0,
-            neighbours: vec![]
+            neighbours: vec![],
+            has_merged: false
         }
     }
 
     fn check_for_merge(&self, next_val: u64) -> bool {
-        if self.val == next_val || self.val == 0 {
+        if (self.val == next_val || self.val == 0) && !self.has_merged {
             return true;
         }
         false
     }
 
     fn merge(&mut self, moving: u64, score: &mut u64) {
+        if self.val > 0 {
+            self.has_merged = true;
+            *score += self.val + moving;
+        }
         self.val += moving;
-        *score += self.val;
+    }
+
+    fn reset_blocker(&mut self) {
+        self.has_merged = false;
     }
 
     fn get_color(&self) -> Color {
@@ -355,6 +367,7 @@ fn recursive_merge(mv_field: &Option<usize>, direction: usize, fields: &mut Vec<
             let next_index = &fields[*field].as_ref().unwrap().neighbours[direction].clone();
             let is_movable = recursive_merge(next_index, direction, fields, score)?;
             if !is_movable {
+                //fields[*field].as_mut().unwrap().block();
                 return Ok(true);
             }
             let current_val = fields[*field].as_ref().unwrap().val.clone();
@@ -363,6 +376,7 @@ fn recursive_merge(mv_field: &Option<usize>, direction: usize, fields: &mut Vec<
             if can_move {
                 next_field.merge(current_val, score);
                 fields[*field].as_mut().unwrap().val = 0;
+                //let _ = recursive_merge(mv_field, direction, fields, score)?;
             }
         }
     }
