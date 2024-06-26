@@ -75,7 +75,7 @@ impl Widget for &App {
                             // Write the number inside the cell
                             let x = inner_chunk.x + (inner_chunk.width / 2) - 1;
                             let y = inner_chunk.y + (inner_chunk.height / 2);
-                            buf.set_string(x, y, format!("{}", self.grid.fields[i * 4 + j].as_ref().unwrap().val), Style::default().fg(Color::White));
+                            buf.set_string(x, y, format!("{}", self.grid.fields[i * 4 + j].as_ref().unwrap().val), Style::default().fg(Color::Black));
                         }   
                     }
                 }
@@ -246,7 +246,6 @@ struct Grid {
 impl Grid {
 
     fn move_vals(&mut self, direction: usize, score: &mut u64) -> Result<()> {
-        //TODO: currently does not move all values correctly, due to only checking each field backwards, once
         if ![0,1,2,3].iter().any(|val| val == &direction) {
             println!("exit");
             return Ok(());
@@ -268,8 +267,27 @@ impl Grid {
             fields: vec![Option::from(Field::new()); 16],
         };
 
-        // init neighbours
+        Self::init_neighbours(&mut grid);
+        Self::init_grid(&mut grid);
 
+        grid
+    }
+
+    fn init_grid(grid: &mut Self) {
+        let mut rng = thread_rng();
+        for field in grid.fields.iter_mut() {
+            let rand = rng.gen_range(0.0..1.0);
+            if field.as_ref().unwrap().val == 0 && rand < 0.1 {
+                field.as_mut().unwrap().val = 2;
+            }
+        }
+        if grid.fields.iter().all(|field| field.as_ref().unwrap().val == 0) {
+            let random_index = rng.gen_range(0..=15);
+                grid.fields[random_index].as_mut().unwrap().val = 2;
+        }
+    }
+
+    fn init_neighbours(grid: &mut Self) {
         for (i, field) in grid.fields.iter_mut().enumerate() {
             let top: Option<usize>;
             let right: Option<usize>;
@@ -301,8 +319,8 @@ impl Grid {
             }
             field.as_mut().unwrap().neighbours = vec![top, right, bot, left];
         }
-        grid
     }
+
 }
 
 #[derive(Debug, Default, Clone)]
