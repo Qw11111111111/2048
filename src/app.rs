@@ -1,23 +1,19 @@
 use crate::tui;
 
-use canvas::Circle;
 use color_eyre::{
-    eyre::WrapErr, owo_colors::{colors::xterm::ScienceBlue, OwoColorize}, Result
+    eyre::WrapErr, Result
 };
 
-use crossterm::{cursor::MoveUp, event::{self, Event, KeyCode, KeyEvent, KeyEventKind}, style::{Print, SetForegroundColor}};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 
-use num::ToPrimitive;
 use rand::{thread_rng, Rng};
 use ratatui::{
     prelude::*, 
     style::Color, 
-    widgets::{block::*, canvas::{Canvas, Rectangle}, Paragraph, *}
+    widgets::{block::*, Paragraph, *}
 };
 
-use std::{ops::Deref, path::is_separator, rc::Rc, sync::{Arc, Mutex, MutexGuard}};
-
-use std::{path::Path, thread};
+use std::path::Path;
 
 use std::time::Duration;
 
@@ -31,7 +27,6 @@ pub struct App {
     on_pause: bool,
     dead: bool,
     grid: Grid,
-    padding: f64,
 }
 
 impl Widget for &App {
@@ -99,10 +94,9 @@ impl App {
     pub fn run(&mut self, terminal: &mut tui::Tui) -> Result<()> {
         loop {
             terminal.draw(|frame| self.render_frame(frame))?;
-            let time = 10000;
+            let time = 1000;
             if event::poll(Duration::from_micros(time))? {
                 self.handle_events().wrap_err("handle events failed")?;
-                thread::sleep(Duration::from_micros(1000));
             }
             if self.exit {
                 break;
@@ -111,7 +105,6 @@ impl App {
                 continue;
             }
             self.highscore();
-            //terminal.draw(|frame| self.render_frame(frame))?;
         }
         Ok(())
     }
@@ -138,16 +131,14 @@ impl App {
     }
 
     pub fn new() -> Result<Self> {
-        let mut app = App {
+        let app = App {
             score: 0,
             highscore: 0,
             exit: false,
             dead: false,
             on_pause: false,
             grid: Grid::new(),
-            padding: 2.0, // 2.0 seems good
         };
-        app.init_level()?;
         Ok(app)
     }
 
@@ -178,7 +169,6 @@ impl App {
             self.on_pause = false;
             self.dead = false;
             self.grid = Grid::new();
-            self.init_level()?;
         }
 
         Ok(())
@@ -229,14 +219,6 @@ impl App {
         Ok(())
     }
 
-    fn process_collision(&mut self) -> Result<()> {
-        Ok(())
-    }
-
-    fn init_level(&mut self) -> Result<()> {
-        Ok(())
-    }
-
     fn new_pieces(&mut self) -> Result<()> {
         let mut rng = thread_rng();
         let all_full = self.grid.fields.iter().all(|field| field.as_ref().unwrap().val != 0);
@@ -264,7 +246,7 @@ struct Grid {
 impl Grid {
 
     fn move_vals(&mut self, direction: usize, score: &mut u64) -> Result<()> {
-        //TODO: rewrite this to check all neighbours in the direction recursively and update all values in the line accordingly
+        //TODO: currently does not move all values correctly, due to only checking each field backwards, once
         if ![0,1,2,3].iter().any(|val| val == &direction) {
             println!("exit");
             return Ok(());
@@ -275,75 +257,12 @@ impl Grid {
                 let _ = recursive_merge(&Option::from(i), direction, &mut self.fields, score);
             }
         }
-
-        for field in self.fields.iter() {
-            //println!("dijhjjsjsjsjks");
-            //let _ = recursive_merge(field, direction, 4);
-            //println!("didhwihdiw");
-            //recursive_merge_check(field, 0,  direction);
-        }
-
-       /* 
-        let _: () = self.fields.iter().map(|field| {
-            let field_val = field.as_ref().unwrap().lock().unwrap().val;
-            let mut neighbour_merge = false;
-            let mut next_merge = false;
-            match &field.as_ref().unwrap().lock().unwrap().neighbours[direction] {
-                None => {
-                    
-                }
-
-                Some(neighbour) => {
-                    let neighbour_val = neighbour.lock().unwrap().val;
-                    if neighbour.try_lock().unwrap().check_for_merge(field_val) {
-                        neighbour_merge = true;
-                    }
-                    match &neighbour.lock().unwrap().neighbours[direction] {
-                        None => {
-                            
-                        }
-                        Some(next_neighbour) => {
-                            if next_neighbour.try_lock().unwrap().check_for_merge(neighbour_val) {
-                                *score = *score + neighbour_val + next_neighbour.try_lock().unwrap().val;
-                                next_neighbour.try_lock().unwrap().merge(neighbour_val);
-                                next_merge = true;
-                            }
-                        }
-                    }
-                    if neighbour_merge && !next_merge {
-                        *score = *score + neighbour_val + field_val;
-                        neighbour.try_lock().unwrap().merge(field_val);
-                    }
-                }
-            }
-            if neighbour_merge {
-                field.as_ref().unwrap().try_lock().unwrap().val = 0;
-            }
-        }).collect();
-        */
         Ok(())
     }
 
     fn new() -> Self {
         let mut  grid = Grid {
             fields: vec![Option::from(Field::new()); 16],
-                /*Field::new(vec![-180.0, 60.0]),
-                Field::new(vec![-60.0, 60.0]),
-                Field::new(vec![60.0, 60.0]),
-                Field::new(vec![-180.0, -60.0]),
-                Field::new(vec![-60.0, -60.0]),
-                Field::new(vec![60.0, -60.0]),
-                Field::new(vec![-180.0, -180.0]),
-                Field::new(vec![-60.0, -180.0]),
-                Field::new(vec![60.0, -180.0]),
-                Field::new(vec![60.0, 60.0]),
-                Field::new(vec![-180.0, -60.0]),
-                Field::new(vec![-60.0, -60.0]),
-                Field::new(vec![60.0, -60.0]),
-                Field::new(vec![-180.0, -180.0]),
-                Field::new(vec![-60.0, -180.0]),
-                Field::new(vec![60.0, -180.0])
-            ]*/
         };
 
         // init neighbours
@@ -398,7 +317,6 @@ impl Field {
     }
 
     fn check_for_merge(&self, next_val: u64) -> bool {
-        //println!("{:?}, {:?}", self.val, next_val);
         if self.val == next_val || self.val == 0 {
             return true;
         }
@@ -434,8 +352,6 @@ fn recursive_merge(mv_field: &Option<usize>, direction: usize, fields: &mut Vec<
     match mv_field {
         None => return Ok(false),
         Some(field) => {
-            //let current = fields[*field].as_ref().unwrap();
-            //let next = &fields[*field].as_ref().unwrap().neighbours[direction];
             let next_index = &fields[*field].as_ref().unwrap().neighbours[direction].clone();
             let is_movable = recursive_merge(next_index, direction, fields, score)?;
             if !is_movable {
