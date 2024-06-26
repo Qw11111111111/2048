@@ -27,6 +27,8 @@ pub struct App {
     on_pause: bool,
     dead: bool,
     grid: Grid,
+    won: bool,
+    ignore_win: bool
 }
 
 impl Widget for &App {
@@ -43,7 +45,7 @@ impl Widget for &App {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Percentage(25), Constraint::Percentage(25), Constraint::Percentage(25), Constraint::Percentage(25)].as_ref())
-                    .split(area.inner(&Margin::new(25, 5)));
+                    .split(area.inner(&Margin::new(32, 2)));
 
                 Paragraph::new(Line::from(self.score.to_string()))
                     .alignment(Alignment::Left)
@@ -82,8 +84,14 @@ impl Widget for &App {
                 else {
                     Paragraph::new(Line::from(" dead ".bold().red()))
                         .centered()
-                        .bold()
-                        .block(block)
+                        .block(block.clone())
+                        .render(area, buf);
+                }
+
+                if self.won {
+                    Paragraph::new(Line::from(vec![Span::from(" Congratulations you won |".bold()), Span::from(" restart: <Enter>, continue: <c>".bold())]))
+                        .centered()
+                        .block(block.clone())
                         .render(area, buf);
                 }
     }   
@@ -105,6 +113,9 @@ impl App {
                 continue;
             }
             self.highscore();
+            if self.ignore_win {
+                self.reset_max();
+            }
         }
         Ok(())
     }
@@ -138,6 +149,8 @@ impl App {
             dead: false,
             on_pause: false,
             grid: Grid::new(),
+            won: false,
+            ignore_win: false
         };
         Ok(app)
     }
@@ -151,8 +164,10 @@ impl App {
             KeyCode::Left => self.move_left()?,
             KeyCode::Up => self.move_up()?,
             KeyCode::Down => self.move_down()?,
+            KeyCode::Char('c') => self.ignore_win = true,
             _ => {}
         }
+        self.check_for_win();
         Ok(())
     }
 
@@ -203,7 +218,7 @@ impl App {
 
     fn move_right(&mut self) -> Result<()> {
         self.grid.move_vals(1, &mut self.score)?;
-        self.new_pieces()?;
+
         Ok(())
     }
 
@@ -234,6 +249,22 @@ impl App {
         }
 
         Ok(())
+    }
+
+    fn check_for_win(&mut self){
+        if self.ignore_win {
+            self.won = false;
+            return;
+        }
+        self.won = self.grid.get_state();
+    }
+
+    fn reset_max(&mut self) {
+        let _: () = self.grid.fields.iter_mut().map(|field|{
+            if field.as_ref().unwrap().val >= 2048 {
+                field.as_mut().unwrap().val = 0;
+            }
+        }).collect();
     }
 
 }
@@ -278,7 +309,7 @@ impl Grid {
         for field in grid.fields.iter_mut() {
             let rand = rng.gen_range(0.0..1.0);
             if field.as_ref().unwrap().val == 0 && rand < 0.1 {
-                field.as_mut().unwrap().val = 2;
+                field.as_mut().unwrap().val = 0;
             }
         }
         if grid.fields.iter().all(|field| field.as_ref().unwrap().val == 0) {
@@ -319,6 +350,10 @@ impl Grid {
             }
             field.as_mut().unwrap().neighbours = vec![top, right, bot, left];
         }
+    }
+
+    fn get_state(&self) -> bool {
+        self.fields.iter().any(|field| field.as_ref().unwrap().val == 2048)
     }
 
 }
@@ -362,7 +397,7 @@ impl Field {
         match self.val {
             0 => return Color::Black,
             2 => return Color::LightYellow,
-            4 => return Color::Gray,
+            4 => return Color::White,
             8 => return Color::Blue,
             16 => return Color::Green,
             32 => return Color::Yellow,
@@ -377,7 +412,6 @@ impl Field {
     }
 }
 
-
 fn recursive_merge(mv_field: &Option<usize>, direction: usize, fields: &mut Vec<Option<Field>>, score: &mut u64) -> Result<bool> {
     match mv_field {
         None => return Ok(false),
@@ -385,7 +419,6 @@ fn recursive_merge(mv_field: &Option<usize>, direction: usize, fields: &mut Vec<
             let next_index = &fields[*field].as_ref().unwrap().neighbours[direction].clone();
             let is_movable = recursive_merge(next_index, direction, fields, score)?;
             if !is_movable {
-                //fields[*field].as_mut().unwrap().block();
                 return Ok(true);
             }
             let current_val = fields[*field].as_ref().unwrap().val.clone();
@@ -394,7 +427,6 @@ fn recursive_merge(mv_field: &Option<usize>, direction: usize, fields: &mut Vec<
             if can_move {
                 next_field.merge(current_val, score);
                 fields[*field].as_mut().unwrap().val = 0;
-                //let _ = recursive_merge(mv_field, direction, fields, score)?;
             }
         }
     }
