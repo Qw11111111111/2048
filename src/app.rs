@@ -15,8 +15,6 @@ use ratatui::{
 
 use std::path::Path;
 
-use std::time::Duration;
-
 use crate::read_write::*;
 
 #[derive(Debug, Default)]
@@ -102,10 +100,7 @@ impl App {
     pub fn run(&mut self, terminal: &mut tui::Tui) -> Result<()> {
         loop {
             terminal.draw(|frame| self.render_frame(frame))?;
-            let time = 1000;
-            if event::poll(Duration::from_micros(time))? {
-                self.handle_events().wrap_err("handle events failed")?;
-            }
+            self.handle_events().wrap_err("handle events failed")?;
             if self.exit {
                 break;
             } 
