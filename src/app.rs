@@ -34,10 +34,20 @@ impl Widget for &App {
         where
             Self: Sized {
 
+                let instructions = Title::from(Line::from(vec![
+                    " move ".bold(),
+                    " <arrows> ".bold(),
+                    " exit ".bold(),
+                    " <q> ".bold(),
+                    " continue ".bold(),
+                    " <c> ".bold()
+                ]));
+
                 let block = Block::default()
                     .borders(Borders::NONE)
                     .title(Title::from(" 2048 ".bold()))
-                    .title_alignment(Alignment::Center)
+                        .title_alignment(Alignment::Center)
+                        .title_position(Position::Top)
                     .bg(Color::Black);
 
                 let chunks = Layout::default()
@@ -213,7 +223,7 @@ impl App {
 
     fn move_right(&mut self) -> Result<()> {
         self.grid.move_vals(1, &mut self.score)?;
-
+        self.new_pieces()?;
         Ok(())
     }
 
@@ -232,18 +242,26 @@ impl App {
     fn new_pieces(&mut self) -> Result<()> {
         let mut rng = thread_rng();
         let all_full = self.grid.fields.iter().all(|field| field.as_ref().unwrap().val != 0);
-        for field in self.grid.fields.iter_mut() {
-            let rand = rng.gen_range(0.0..1.0);
-            if field.as_ref().unwrap().val == 0 && rand < 0.1 {
-                field.as_mut().unwrap().val = 2;
-            }
-            if rand < 0.1 && all_full {
-                self.is_dead()?;
-                break;
+        loop {
+            for field in self.grid.fields.iter_mut() {
+                let rand = rng.gen_range(0.0..1.0);
+                if field.as_ref().unwrap().val == 0 && rand < 1.0 / 16.0 {
+                    let rand_2 = rng.gen_range(0.0..1.0);
+                    if rand_2 < 0.15 {
+                        field.as_mut().unwrap().val = 2;
+                        return  Ok(());
+                    }
+                    else {
+                        field.as_mut().unwrap().val = 2;
+                        return Ok(());
+                    }
+                }
+                if rand < 0.1 && all_full {
+                    self.is_dead()?;
+                    return Ok(());
+                }
             }
         }
-
-        Ok(())
     }
 
     fn check_for_win(&mut self){
