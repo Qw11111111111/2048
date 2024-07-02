@@ -35,19 +35,24 @@ impl Widget for &App {
             Self: Sized {
 
                 let instructions = Title::from(Line::from(vec![
-                    " move ".bold(),
+                    " move:".bold(),
                     " <arrows> ".bold(),
-                    " exit ".bold(),
+                    " exit:".bold(),
                     " <q> ".bold(),
-                    " continue ".bold(),
-                    " <c> ".bold()
+                    " continue (after 2048):".bold(),
+                    " <c> ".bold(),
+                    " restart:".bold(),
+                    " <Enter> ".bold()
                 ]));
 
                 let block = Block::default()
                     .borders(Borders::NONE)
-                    .title(Title::from(" 2048 ".bold()))
-                        .title_alignment(Alignment::Center)
-                        .title_position(Position::Top)
+                    .title(Title::from(" 2048 ".bold())
+                        .alignment(Alignment::Center)
+                        .position(Position::Top))
+                    .title(instructions
+                        .alignment(Alignment::Center)
+                        .position(Position::Bottom))
                     .bg(Color::Black);
 
                 let chunks = Layout::default()
