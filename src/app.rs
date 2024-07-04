@@ -39,8 +39,6 @@ impl Widget for &App {
                     " <arrows> ".bold(),
                     " exit:".bold(),
                     " <q> ".bold(),
-                    " continue (after 2048):".bold(),
-                    " <c> ".bold(),
                     " restart:".bold(),
                     " <Enter> ".bold()
                 ]));
