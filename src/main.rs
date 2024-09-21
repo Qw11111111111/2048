@@ -2,7 +2,7 @@ use app::App;
 use color_eyre::Result;
 
 use std::fs::File;
-use std::path::Path;
+use std::env;
 
 use read_write::*;
 
@@ -14,11 +14,16 @@ pub mod read_write;
 fn main() -> Result<()> {
     errors::install_hooks()?;
     let mut terminal = tui::init()?;
-
-    let path = Path::new("Highscore.bin");
+    let path_to_self = env::current_exe()?;
+    let path = path_to_self
+        .parent()
+        .and_then(|p| p.parent())
+        .and_then(|p|p.parent())
+        .map(|p|p.join("Highscore.bin"))
+        .unwrap();
     let number: u64;
     if !path.exists() {
-        File::create(path)?;
+        File::create(&path)?;
         number = 0;
     }
     else {
@@ -30,7 +35,7 @@ fn main() -> Result<()> {
     app.run(&mut terminal)?;
     tui::restore()?;
     
-    save(path, app.highscore)?;
+    save(&path, app.highscore)?;
     Ok(())
 }
 
